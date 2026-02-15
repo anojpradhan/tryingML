@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hand Gesture Training</title>
+
+    <!-- p5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+
+    <!-- ml5 -->
+    <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-align: center;
+      }
+      #info {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      Press <b>T</b> → Collect THUMBS UP <br />
+      Press <b>N</b> → Collect NORMAL <br />
+      Press <b>SPACE</b> → Stop Collecting <br />
+      Press <b>S</b> → Train & Save Model
+    </div>
+
+    <script src="train.js"></script>
+  </body>
+</html>
