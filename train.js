@@ -1,25 +1,33 @@
-let handPose;
 let video;
-let hands = [];
-let neuralNetwork;
-let targetLabel = "";
-let collecting = false;
+let handpose;
+let predictions = [];
 
-function preload() {
-  handPose = ml5.handPose();
-}
+let neuralNetwork;
+
+let collecting = false;
+let targetLabel = "";
+
+let thumbsCount = 0;
+let normalCount = 0;
 
 function setup() {
   createCanvas(640, 480);
 
+  // Create webcam
   video = createCapture(VIDEO);
   video.size(640, 480);
   video.hide();
 
-  handPose.detectStart(video, gotHands);
+  // Load Handpose model
+  handpose = ml5.handpose(video, modelReady);
 
-  // Neural Network setup
-  let options = {
+  // When hands are detected
+  handpose.on("predict", (results) => {
+    predictions = results;
+  });
+
+  // Setup Neural Network
+  const options = {
     inputs: 63,
     outputs: 2,
     task: "classification",
@@ -29,84 +37,108 @@ function setup() {
   neuralNetwork = ml5.neuralNetwork(options);
 }
 
-function gotHands(results) {
-  hands = results;
+function modelReady() {
+  console.log("Handpose model loaded!");
 }
 
 function draw() {
   image(video, 0, 0, width, height);
 
-  if (hands.length > 0) {
-    let hand = hands[0];
+  if (predictions.length > 0) {
+    let hand = predictions[0];
 
-    // Draw keypoints
-    for (let i = 0; i < hand.keypoints.length; i++) {
-      let kp = hand.keypoints[i];
-      fill(0, 255, 0);
-      noStroke();
-      circle(kp.x, kp.y, 8);
-    }
+    drawKeypoints(hand);
 
-    // Collect data continuously if collecting is true
     if (collecting) {
       let inputs = extractKeypoints(hand);
-      neuralNetwork.addData(inputs, { label: targetLabel });
-      console.log("Collecting:", targetLabel);
+
+      if (inputs.length === 63) {
+        neuralNetwork.addData(inputs, { label: targetLabel });
+
+        if (targetLabel === "thumbs_up") thumbsCount++;
+        if (targetLabel === "normal") normalCount++;
+
+        console.log("Thumbs:", thumbsCount, "Normal:", normalCount);
+      }
     }
+  }
+
+  drawStats();
+}
+
+function drawKeypoints(hand) {
+  for (let i = 0; i < hand.landmarks.length; i++) {
+    let x = hand.landmarks[i][0];
+    let y = hand.landmarks[i][1];
+
+    fill(0, 255, 0);
+    noStroke();
+    circle(x, y, 8);
   }
 }
 
+function extractKeypoints(hand) {
+  let inputs = [];
+
+  let wristX = hand.landmarks[0][0];
+  let wristY = hand.landmarks[0][1];
+
+  for (let i = 0; i < hand.landmarks.length; i++) {
+    let x = hand.landmarks[i][0] - wristX;
+    let y = hand.landmarks[i][1] - wristY;
+    let z = hand.landmarks[i][2];
+
+    inputs.push(x);
+    inputs.push(y);
+    inputs.push(z);
+  }
+
+  return inputs;
+}
+
 function keyPressed() {
-  // Start collecting thumbs up
-  if (key === "t" || key === "T") {
+  if (key === "T") {
     targetLabel = "thumbs_up";
     collecting = true;
-    console.log("Collecting THUMBS UP...");
+    console.log("Collecting THUMBS UP");
   }
 
-  // Start collecting normal hand
-  if (key === "n" || key === "N") {
+  if (key === "N") {
     targetLabel = "normal";
     collecting = true;
-    console.log("Collecting NORMAL...");
+    console.log("Collecting NORMAL");
   }
 
-  // Stop collecting
-  if (key === " ") {
+  if (keyCode === 32) {
+    // SPACE
     collecting = false;
-    console.log("Stopped collecting.");
+    console.log("Stopped collecting");
   }
 
-  // Train model
-  if (key === "s" || key === "S") {
+  if (key === "S") {
     collecting = false;
+
+    if (thumbsCount < 50 || normalCount < 50) {
+      console.log(" Collect at least 50 samples per class!");
+      return;
+    }
+
     console.log("Training started...");
 
     neuralNetwork.normalizeData();
 
-    neuralNetwork.train({ epochs: 50 }, finishedTraining);
+    neuralNetwork.train({ epochs: 60 }, finishedTraining);
   }
 }
 
 function finishedTraining() {
-  console.log("Training complete!");
-  neuralNetwork.save(); // downloads model files
+  console.log(" Training complete!");
+  neuralNetwork.save(); // Downloads model files
 }
 
-// Extract 63 inputs (21 keypoints × x,y,z)
-function extractKeypoints(hand) {
-  let inputs = [];
-
-  // Use wrist as reference (IMPORTANT for stability)
-  let wrist = hand.keypoints[0];
-
-  for (let i = 0; i < hand.keypoints.length; i++) {
-    let kp = hand.keypoints[i];
-
-    inputs.push(kp.x - wrist.x);
-    inputs.push(kp.y - wrist.y);
-    inputs.push(kp.z);
-  }
-
-  return inputs;
+function drawStats() {
+  fill(255);
+  textSize(16);
+  text("Thumbs: " + thumbsCount, 10, height - 40);
+  text("Normal: " + normalCount, 10, height - 20);
 }

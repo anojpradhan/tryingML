@@ -7,8 +7,8 @@
     <!-- p5 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 
-    <!-- ml5 -->
-    <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+    <!-- STABLE ml5 VERSION -->
+    <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
 
     <style>
       body {
@@ -17,23 +17,25 @@
         background: black;
         color: white;
         font-family: Arial, sans-serif;
-        text-align: center;
       }
+
       #info {
         position: absolute;
         top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 18px;
+        left: 10px;
+        font-size: 16px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 8px;
       }
     </style>
   </head>
   <body>
     <div id="info">
-      Press <b>T</b> → Collect THUMBS UP <br />
-      Press <b>N</b> → Collect NORMAL <br />
-      Press <b>SPACE</b> → Stop Collecting <br />
-      Press <b>S</b> → Train & Save Model
+      T → Collect Thumbs Up <br />
+      N → Collect Normal <br />
+      SPACE → Stop Collecting <br />
+      S → Train & Save Model
     </div>
 
     <script src="train.js"></script>
