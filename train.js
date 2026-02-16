@@ -10,35 +10,35 @@ let targetLabel = "";
 let thumbsCount = 0;
 let normalCount = 0;
 
+// Number of points * 2 (x,y)
+const INPUTS = 42;
+
 function setup() {
   createCanvas(640, 480);
 
-  // Create webcam
+  // Setup webcam
   video = createCapture(VIDEO);
   video.size(640, 480);
   video.hide();
 
   // Load Handpose model
-  handpose = ml5.handpose(video, modelReady);
+  handpose = ml5.handpose(video, () => {
+    console.log("Handpose model loaded!");
+  });
 
-  // When hands are detected
   handpose.on("predict", (results) => {
     predictions = results;
   });
 
   // Setup Neural Network
   const options = {
-    inputs: 63,
+    inputs: INPUTS, // 21 points * 2 (x,y)
     outputs: 2,
     task: "classification",
     debug: true,
   };
 
   neuralNetwork = ml5.neuralNetwork(options);
-}
-
-function modelReady() {
-  console.log("Handpose model loaded!");
 }
 
 function draw() {
@@ -52,14 +52,17 @@ function draw() {
     if (collecting) {
       let inputs = extractKeypoints(hand);
 
-      if (inputs.length === 63) {
-        neuralNetwork.addData(inputs, { label: targetLabel });
-
-        if (targetLabel === "thumbs_up") thumbsCount++;
-        if (targetLabel === "normal") normalCount++;
-
-        console.log("Thumbs:", thumbsCount, "Normal:", normalCount);
+      // Skip invalid inputs
+      if (inputs.length !== INPUTS || inputs.some((v) => isNaN(v))) {
+        return;
       }
+
+      neuralNetwork.addData(inputs, { label: targetLabel });
+
+      if (targetLabel === "thumbs_up") thumbsCount++;
+      if (targetLabel === "normal") normalCount++;
+
+      console.log("Thumbs:", thumbsCount, "Normal:", normalCount);
     }
   }
 
@@ -86,11 +89,9 @@ function extractKeypoints(hand) {
   for (let i = 0; i < hand.landmarks.length; i++) {
     let x = hand.landmarks[i][0] - wristX;
     let y = hand.landmarks[i][1] - wristY;
-    let z = hand.landmarks[i][2];
-
     inputs.push(x);
     inputs.push(y);
-    inputs.push(z);
+    // z skipped for stability
   }
 
   return inputs;
@@ -110,7 +111,7 @@ function keyPressed() {
   }
 
   if (keyCode === 32) {
-    // SPACE
+    // SPACE stops collection
     collecting = false;
     console.log("Stopped collecting");
   }
@@ -119,7 +120,7 @@ function keyPressed() {
     collecting = false;
 
     if (thumbsCount < 50 || normalCount < 50) {
-      console.log(" Collect at least 50 samples per class!");
+      console.log(" Collect at least 50 varied samples per class!");
       return;
     }
 
@@ -127,13 +128,13 @@ function keyPressed() {
 
     neuralNetwork.normalizeData();
 
-    neuralNetwork.train({ epochs: 60 }, finishedTraining);
+    neuralNetwork.train({ epochs: 60, batchSize: 16 }, finishedTraining);
   }
 }
 
 function finishedTraining() {
   console.log(" Training complete!");
-  neuralNetwork.save(); // Downloads model files
+  neuralNetwork.save(); // Downloads model.json, model_meta.json, model.weights.bin
 }
 
 function drawStats() {
